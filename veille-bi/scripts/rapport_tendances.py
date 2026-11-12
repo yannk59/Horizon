@@ -72,10 +72,11 @@ def modele_par_defaut() -> str:
 def appeler(client, modele: str, systeme: str, contenu: str) -> str:
     rep = client.messages.create(
         model=modele,
-        max_tokens=8000,
+        max_tokens=16000,
         system=systeme,
         messages=[{"role": "user", "content": contenu}],
     )
+    print(f"   stop_reason={rep.stop_reason}, sortie={rep.usage.output_tokens} tokens")
     return "".join(b.text for b in rep.content if getattr(b, "type", "") == "text").strip()
 
 
