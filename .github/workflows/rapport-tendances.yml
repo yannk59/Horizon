@@ -1,0 +1,70 @@
+name: Rapport de tendances (veille BI)
+
+on:
+  schedule:
+    # Lundi 06:23 UTC = 07:23 à Paris (hiver) : brouillon hebdo des 7 derniers jours
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "generer = nouveau brouillon ; publier = mettre en ligne le dernier brouillon validé"
+        type: choice
+        options: [generer, publier]
+        default: generer
+      jours:
+        description: "Période couverte (7 = hebdo, 30 = mensuel)"
+        default: "7"
+
+permissions:
+  contents: write
+
+jobs:
+  rapport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Récupérer les briefings publiés (gh-pages)
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: pages
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.26"
+
+      - name: Installer
+        run: uv sync
+
+      - name: Générer le brouillon
+        if: github.event_name == 'schedule' || inputs.action == 'generer'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VEILLE_MODEL: ${{ vars.VEILLE_MODEL }}
+        run: |
+          uv run python veille-bi/scripts/rapport_tendances.py generer \
+            --posts-dir pages/_posts --jours "${{ inputs.jours || '7' }}"
+          git config user.name "veille-bi-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add veille-bi/rapports
+          git commit -m "Brouillon rapport de tendances $(date +%F)" || echo "Rien à committer"
+          git push
+
+      - name: Préparer la publication du dernier brouillon
+        if: inputs.action == 'publier'
+        run: |
+          DERNIER=$(ls veille-bi/rapports/*j.md | sort | tail -1)
+          echo "Publication de $DERNIER"
+          uv run python veille-bi/scripts/rapport_tendances.py publier "$DERNIER" --out-dir out/_posts
+
+      - name: Mettre en ligne sur GitHub Pages
+        if: inputs.action == 'publier'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          keep_files: true
+          publish_branch: gh-pages
+          enable_jekyll: true
+          commit_message: "📊 Rapport de tendances publié"
