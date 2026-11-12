@@ -73,7 +73,6 @@ def appeler(client, modele: str, systeme: str, contenu: str) -> str:
     rep = client.messages.create(
         model=modele,
         max_tokens=8000,
-        temperature=0.3,
         system=systeme,
         messages=[{"role": "user", "content": contenu}],
     )
