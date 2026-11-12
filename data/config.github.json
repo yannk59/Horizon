@@ -1,7 +1,7 @@
 {
   "ai": {
     "provider": "anthropic",
-     "model": "claude-haiku-5-5",
+    "model": "claude-haiku-5-5",
     "api_key_env": "ANTHROPIC_API_KEY",
     "temperature": 0.3,
     "max_tokens": 8192,
