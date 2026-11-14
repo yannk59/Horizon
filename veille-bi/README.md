@@ -42,6 +42,31 @@ Pour lancer un rapport à la demande, par exemple **mensuel** : *Run workflow*, 
 - *Optionnel* : pour une rédaction plus fine que le modèle quotidien, crée une variable `VEILLE_MODEL` (Settings, puis Secrets and variables, Actions, onglet *Variables*) avec un modèle plus puissant.
 - Le rapport ne vaut que par ses sources : enrichis `data/config.github.json` (flux RSS Maddyness, FrenchWeb, Sifted, EU-Startups, Bpifrance, etc.).
 
+## Newsletter (Brevo)
+
+Quand tu cliques sur `publier`, le rapport validé part aussi en **newsletter** vers ta liste Brevo. Il est mis en forme pour l'email, avec un bouton « Lire en ligne » et un lien de désabonnement conforme au RGPD (`scripts/newsletter_brevo.py`).
+
+### Mise en place (une fois, environ 15 min)
+1. Crée un compte sur **brevo.com** (gratuit jusqu'à 300 emails par jour).
+2. Dans Brevo :
+   - **Expéditeurs** : ajoute et valide ton adresse d'envoi (idéalement sur ton propre domaine).
+   - **Contacts, puis Listes** : crée une liste, par exemple « Veille tendances », et note son **numéro** (ID).
+   - **Formulaires** : crée un formulaire d'inscription relié à cette liste, avec double opt-in, et colle son lien sur ton site ou LinkedIn.
+   - **SMTP & API, puis Clés API** : génère une clé.
+3. Sur GitHub, va dans *Settings*, puis *Secrets and variables*, puis *Actions* :
+   - onglet *Secrets* : `BREVO_API_KEY` = la clé API ;
+   - onglet *Variables* :
+     - `BREVO_LIST_ID` = le numéro de la liste ;
+     - `BREVO_SENDER_EMAIL` = l'adresse validée ;
+     - `BREVO_SENDER_NAME` = le nom affiché (par exemple « Veille Tendances · Yann Kervarec ») ;
+     - `BREVO_TEST_EMAIL` = ton adresse, pour recevoir les tests.
+
+### Au quotidien
+- **Avant d'envoyer** : *Run workflow*, puis `tester-newsletter`. Tu reçois le dernier brouillon dans ta boîte, exactement comme tes abonnés le verront.
+- **Pour envoyer** : *Run workflow*, puis `publier`. Le rapport est mis en ligne et la newsletter part à toute la liste.
+
+Sans clé Brevo, `publier` met simplement le rapport en ligne, sans envoyer d'email.
+
 ## Du rapport au business
 
 | Offre | Format | Cible |
