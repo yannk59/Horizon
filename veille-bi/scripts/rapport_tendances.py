@@ -80,6 +80,21 @@ def appeler(client, modele: str, systeme: str, contenu: str) -> str:
     return "".join(b.text for b in rep.content if getattr(b, "type", "") == "text").strip()
 
 
+def fixer_entete(rapport: str, periode: str, nb: int) -> str:
+    """Écrit la période et le nombre de briefings de façon fiable (l'IA les recopie parfois mal)."""
+    lignes = rapport.splitlines()
+    titre_fait = sous_titre_fait = False
+    for i, l in enumerate(lignes):
+        if not titre_fait and l.startswith("# "):
+            lignes[i] = f"# Rapport de tendances — {periode}"
+            titre_fait = True
+        elif not sous_titre_fait and l.startswith("> ") and "briefing" in l:
+            lignes[i] = (f"> Startups, entrepreneuriat & tech · France / Europe · "
+                         f"{nb} briefing{'s' if nb > 1 else ''} analysé{'s' if nb > 1 else ''}")
+            sous_titre_fait = True
+    return "\n".join(lignes)
+
+
 def generer(args) -> None:
     fin = date.fromisoformat(args.fin) if args.fin else datetime.now(timezone.utc).date()
     briefings = collecter(Path(args.posts_dir), args.jours, args.langue, fin)
@@ -119,6 +134,7 @@ def generer(args) -> None:
     final = appeler(client, modele, lire(BI / "agents" / "verificateur.md"),
                     f"# BRIEFINGS SOURCES\n{corpus}\n\n# RAPPORT À VÉRIFIER\n{rapport}")
 
+    final = fixer_entete(final, periode, len(briefings))
     entete = f"<!-- brouillon généré le {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC · {periode} · {modele} -->\n"
     sortie.write_text(entete + final + "\n", encoding="utf-8")
     (sortie.with_suffix(".analyse.md")).write_text(analyse + "\n", encoding="utf-8")
@@ -137,7 +153,7 @@ def publier(args) -> None:
     titre_yaml = titre.replace('"', "'")
     dest.write_text(
         f"---\nlayout: default\ntitle: \"{titre_yaml}\"\ndate: {jour}\nlang: fr\n"
-        f"categories: rapport\n---\n\n{texte}\n",
+        f"---\n\n{texte}\n",
         encoding="utf-8",
     )
     print(f"Publié : {dest}")
