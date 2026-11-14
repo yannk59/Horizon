@@ -9,7 +9,7 @@ Variables d'environnement :
   BREVO_API_KEY       clé API Brevo (secret GitHub)
   BREVO_LIST_ID       numéro de la liste de contacts Brevo
   BREVO_SENDER_EMAIL  adresse d'expéditeur validée dans Brevo
-  BREVO_SENDER_NAME   nom d'expéditeur (défaut : "Veille Tendances")
+  BREVO_SENDER_NAME   nom d'expéditeur (défaut : "Veille-Tech")
   BREVO_TEST_EMAIL    adresse(s) de test, séparées par des virgules
   SITE_URL            défaut : https://yannk59.github.io/Horizon
 """
@@ -37,7 +37,7 @@ GABARIT = """<!DOCTYPE html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
        style="max-width:640px;background:#ffffff;border-radius:8px;font-family:Georgia,'Times New Roman',serif;color:#1f2933;">
 <tr><td style="padding:28px 32px 8px;border-bottom:3px solid #1f6feb;">
-  <div style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1f6feb;">Veille tendances · startups &amp; tech</div>
+  <div style="font-family:Arial,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1f6feb;">Veille-Tech · startups &amp; tech</div>
   <h1 style="font-size:24px;line-height:1.3;margin:8px 0 12px;">{titre}</h1>
 </td></tr>
 <tr><td class="contenu" style="padding:16px 32px 8px;font-size:16px;line-height:1.6;">
@@ -47,7 +47,7 @@ GABARIT = """<!DOCTYPE html>
   <a href="{lien}" style="display:inline-block;background:#1f6feb;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:14px;padding:10px 18px;border-radius:6px;">Lire en ligne</a>
 </td></tr>
 <tr><td style="padding:16px 32px 28px;border-top:1px solid #e4e7eb;font-family:Arial,sans-serif;font-size:12px;color:#7b8794;">
-  Vous recevez cet email car vous êtes inscrit(e) à la veille tendances.<br>
+  Vous recevez cet email car vous êtes inscrit(e) à la newsletter Veille-Tech.<br>
   <a href="{{{{ unsubscribe }}}}" style="color:#7b8794;">Se désabonner</a>
 </td></tr>
 </table></td></tr></table></body></html>"""
@@ -120,7 +120,7 @@ def main() -> None:
         "name": f"{'[TEST] ' if args.test else ''}{titre}",
         "subject": titre,
         "previewText": "Les tendances startups & tech de la période, chiffres et sources à l'appui.",
-        "sender": {"name": env("BREVO_SENDER_NAME", "Veille Tendances"), "email": env("BREVO_SENDER_EMAIL")},
+        "sender": {"name": env("BREVO_SENDER_NAME", "Veille-Tech"), "email": env("BREVO_SENDER_EMAIL")},
         "htmlContent": corps_html,
         "recipients": {"listIds": [int(env("BREVO_LIST_ID"))]},
     }
