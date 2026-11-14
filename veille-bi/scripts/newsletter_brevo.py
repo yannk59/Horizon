@@ -122,8 +122,9 @@ def main() -> None:
         "previewText": "Les tendances startups & tech de la période, chiffres et sources à l'appui.",
         "sender": {"name": env("BREVO_SENDER_NAME", "Veille-Tech"), "email": env("BREVO_SENDER_EMAIL")},
         "htmlContent": corps_html,
-        "recipients": {"listIds": [int(env("BREVO_LIST_ID"))]},
     }
+    if not args.test:  # un test n'exige pas de contacts dans la liste (Brevo refuse une liste vide)
+        campagne["recipients"] = {"listIds": [int(env("BREVO_LIST_ID"))]}
     with httpx.Client(headers=entetes, timeout=60) as client:
         cid = api(client, "POST", "/emailCampaigns", json=campagne)["id"]
         print(f"Campagne Brevo créée : #{cid}")
