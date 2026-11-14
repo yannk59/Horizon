@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "generer = nouveau brouillon ; publier = mettre en ligne le dernier brouillon validé"
+        description: "generer = nouveau brouillon ; tester-newsletter = email test du dernier brouillon ; publier = mise en ligne + newsletter"
         type: choice
-        options: [generer, publier]
+        options: [generer, tester-newsletter, publier]
         default: generer
       jours:
         description: "Période couverte (7 = hebdo, 30 = mensuel)"
@@ -68,3 +68,28 @@ jobs:
           publish_branch: gh-pages
           enable_jekyll: true
           commit_message: "📊 Rapport de tendances publié"
+
+      - name: Newsletter de test (dernier brouillon)
+        if: inputs.action == 'tester-newsletter'
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_LIST_ID: ${{ vars.BREVO_LIST_ID }}
+          BREVO_SENDER_EMAIL: ${{ vars.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ vars.BREVO_SENDER_NAME }}
+          BREVO_TEST_EMAIL: ${{ vars.BREVO_TEST_EMAIL }}
+        run: |
+          DERNIER=$(ls veille-bi/rapports/*j.md | sort | tail -1)
+          uv run python veille-bi/scripts/newsletter_brevo.py "$DERNIER" --test
+
+      - name: Envoyer la newsletter à la liste
+        if: inputs.action == 'publier'
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_LIST_ID: ${{ vars.BREVO_LIST_ID }}
+          BREVO_SENDER_EMAIL: ${{ vars.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ vars.BREVO_SENDER_NAME }}
+          BREVO_TEST_EMAIL: ${{ vars.BREVO_TEST_EMAIL }}
+        run: |
+          if [ -z "$BREVO_API_KEY" ]; then echo "BREVO_API_KEY absent : newsletter non envoyée."; exit 0; fi
+          DERNIER=$(ls veille-bi/rapports/*j.md | sort | tail -1)
+          uv run python veille-bi/scripts/newsletter_brevo.py "$DERNIER" --envoyer
