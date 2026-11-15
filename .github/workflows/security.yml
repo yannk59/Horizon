@@ -1,0 +1,89 @@
+# .github/workflows/security.yml
+#
+# Contrôles de sécurité automatiques : TruffleHog (secrets), Semgrep (failles de code),
+# revue de sécurité Claude (commentaires sur les PR).
+#
+# MISE EN PLACE (une fois par repo)
+# 1. Settings > Secrets and variables > Actions > New repository secret
+#    Nom : CLAUDE_API_KEY  — valeur : une clé API Anthropic (console.anthropic.com)
+# 2. Settings > Actions > General > « Fork pull request workflows from outside collaborators »
+#    → cocher « Require approval for all external contributors ».
+#    La doc d'Anthropic précise que l'action n'est pas protégée contre l'injection de prompt :
+#    elle ne doit relire que des PR de confiance.
+# 3. Sur un repo forké, les Actions sont désactivées par défaut : onglet Actions > activer.
+#
+# COÛTS : la revue Claude est facturée à l'usage de l'API à chaque PR.
+#         TruffleHog et Semgrep sont gratuits.
+
+name: Security
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  trufflehog:
+    name: Secrets (TruffleHog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Scan des secrets commités
+        uses: trufflesecurity/trufflehog@3bd2b5887eb0efb8fa18bfd1d296032924e4ffdc # v3.99.9
+        with:
+          # verified = la clé marche encore ; unknown = vérification impossible
+          extra_args: --results=verified,unknown
+
+  semgrep:
+    name: Failles de code (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scan Semgrep
+        # --error : la vérification échoue si une faille est trouvée
+        run: semgrep scan --config auto --error
+
+  claude-review:
+    name: Revue de sécurité Claude
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+      - name: Consignes spécifiques aux projets
+        run: |
+          cat > "$RUNNER_TEMP/consignes-securite.txt" <<'EOF'
+          Surveiller en priorité :
+          - Clés d'exchange crypto (Binance, Kraken, etc.) ou clés API en clair, loguées,
+            envoyées au client ou stockées sans chiffrement.
+          - Injection de prompt : tout texte externe (news, tweets, données de marché, saisie
+            utilisateur) inséré dans un prompt du filtre IA du bot de trading ou de l'outil
+            pour fondateurs sans séparation claire entre instructions et données.
+          - Ordres de trading sans plafond : absence de limite de taille de position, de perte
+            journalière ou de nombre d'ordres, ou décision d'ordre prise directement à partir
+            de la sortie d'un LLM sans validation.
+          - Accès aux données d'un autre utilisateur en changeant un id dans une URL ou une
+            requête (IDOR / contrôle d'autorisation manquant).
+          EOF
+      - uses: anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda # main au 15/11/2026
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          custom-security-scan-instructions: ${{ runner.temp }}/consignes-securite.txt
+
+# SCAN COMPLET DE L'HISTORIQUE (à lancer une fois sur chaque repo existant, surtout celui du bot)
+#   docker run --rm -it -v "$PWD:/repo" trufflesecurity/trufflehog:latest git file:///repo --results=verified,unknown
+# Si une clé ressort : la révoquer chez le fournisseur. La supprimer du code ne suffit pas,
+# elle reste dans l'historique git.
